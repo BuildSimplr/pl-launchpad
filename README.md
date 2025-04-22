@@ -1,1 +1,4 @@
-# pl-launchpad
+/frontend
+/backend
+/docs
+README.md
