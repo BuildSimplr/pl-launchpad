@@ -49,6 +49,11 @@ A serverless product management toolkit built on AWS. This app empowers product 
 
 This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
 
+Visit http://localhost:3000 in your browser.
+
+🎯 Purpose
+This project is both a learning vehicle for mastering AWS cloud services and a production-minded portfolio piece demonstrating end-to-end cloud application development.
+
 ### Run locally:
 ```bash
 npm install
