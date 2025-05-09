@@ -14,19 +14,22 @@ const LandingPage = () => {
         </div>
         <div className="mt-12">
           {/* Static dashboard preview */}
-          <motion.div 
-            initial={{ opacity: 0, y: 40 }} 
-            whileInView={{ opacity: 1, y: 0 }} 
-            transition={{ duration: 0.8 }} 
-            viewport={{ once: true }}
-            className="mx-auto w-full max-w-4xl bg-white rounded-2xl shadow-xl p-4"
-          >
-            <img
-              src="/assets/dashboard-preview.png"
-              alt="PM Lite dashboard preview"
-              className="rounded-lg w-full object-cover"
-            />
-          </motion.div>
+
+<motion.div 
+  initial={{ opacity: 0, y: 40 }} 
+  whileInView={{ opacity: 1, y: 0 }} 
+  transition={{ duration: 0.8 }} 
+  viewport={{ once: true }}
+  className="mx-auto w-full max-w-4xl bg-white rounded-2xl shadow-xl p-4"
+>
+  <img
+    src={process.env.PUBLIC_URL + "/assets/dashboard-preview.png"}
+    alt="PM Lite dashboard preview"
+    className="rounded-lg w-full object-cover"
+  />
+</motion.div>
+
+
         </div>
       </header>
 
