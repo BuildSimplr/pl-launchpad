@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Modal from '../components/Modal';
-import EmptyState from '../components/EmptyState'; // ✅ Import EmptyState
+import EmptyState from '../components/EmptyState';
+import { logActivity } from '../utils/activityLogger'; // ✅ NEW
 
 const LOCAL_STORAGE_KEY = 'pmLiteNotes';
 
@@ -37,11 +38,15 @@ const MeetingNotesView = () => {
       tags: newNote.tags.split(',').map(tag => tag.trim()).filter(Boolean),
     };
 
-    setNotes(prev =>
-      editId
-        ? prev.map(note => note.id === editId ? formattedNote : note)
-        : [formattedNote, ...prev]
-    );
+    if (editId) {
+      setNotes(prev =>
+        prev.map(note => note.id === editId ? formattedNote : note)
+      );
+      logActivity(`Edited note: ${formattedNote.title}`); // ✅
+    } else {
+      setNotes(prev => [formattedNote, ...prev]);
+      logActivity(`Created note: ${formattedNote.title}`); // ✅
+    }
 
     setNewNote({ title: '', content: '', tags: '', date: '' });
     setEditId(null);
@@ -60,8 +65,12 @@ const MeetingNotesView = () => {
   };
 
   const handleDelete = (id) => {
+    const deletedNote = notes.find(note => note.id === id);
     if (window.confirm('Are you sure you want to delete this note?')) {
       setNotes(prev => prev.filter(note => note.id !== id));
+      if (deletedNote) {
+        logActivity(`Deleted note: ${deletedNote.title}`); // ✅
+      }
     }
   };
 
@@ -203,6 +212,7 @@ const MeetingNotesView = () => {
 };
 
 export default MeetingNotesView;
+
 
 
 

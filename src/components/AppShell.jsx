@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import { Link, Outlet, useLocation } from 'react-router-dom';
-import { Menu, X, Target, ListTodo, FileText, LogOut } from 'lucide-react';
+import { Menu, X, Target, ListTodo, FileText, LogOut, LayoutDashboard } from 'lucide-react';
 
-const AppShell = ({ onLogout }) => {
+const AppShell = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
 
   const navItems = [
+    { name: 'Dashboard', path: '/app/dashboard', icon: <LayoutDashboard size={18} /> },
     { name: 'OKRs', path: '/app/okr', icon: <Target size={18} /> },
     { name: 'Backlog', path: '/app/backlog', icon: <ListTodo size={18} /> },
     { name: 'Meeting Notes', path: '/app/notes', icon: <FileText size={18} /> }
@@ -15,9 +16,9 @@ const AppShell = ({ onLogout }) => {
   const isActive = (path) => location.pathname === path;
 
   const handleLogout = () => {
-    localStorage.removeItem('isAuthenticated');
-    onLogout(); // Only clears auth, not data
-  };  
+    localStorage.removeItem('isAuthenticated'); // ✅ Clear auth flag
+    window.location.href = '/login'; // ✅ Redirect to login screen immediately
+  };
 
   return (
     <div className="min-h-screen flex flex-col md:flex-row">
@@ -41,7 +42,7 @@ const AppShell = ({ onLogout }) => {
             <Link
               key={path}
               to={path}
-              onClick={() => setSidebarOpen(false)} // close menu on mobile
+              onClick={() => setSidebarOpen(false)}
               className={`flex items-center gap-2 px-4 py-2 rounded-lg transition ${
                 isActive(path)
                   ? 'bg-green-700 text-white'
@@ -74,5 +75,9 @@ const AppShell = ({ onLogout }) => {
 };
 
 export default AppShell;
+
+
+
+
 
 

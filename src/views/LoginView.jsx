@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-// ✅ Moved outside component to avoid re-creation on every render
+// ✅ Static loading messages outside component
 const loadingMessages = [
   'Refining your OKRs...',
   'Grooming your backlog...'
 ];
 
-const LoginView = ({ onLogin }) => {
+const LoginView = () => {
   const [loading, setLoading] = useState(false);
   const [currentMsg, setCurrentMsg] = useState('');
   const navigate = useNavigate();
@@ -28,9 +28,9 @@ const LoginView = ({ onLogin }) => {
   const handleLogin = () => {
     setLoading(true);
     setTimeout(() => {
-      onLogin();             // ✅ Set authenticated
-      navigate('/app');      // ✅ Navigate directly to app
-    }, 500); // 👈 Fast enough to flash loading animation
+      localStorage.setItem('isAuthenticated', 'true'); // ✅ Set persistent auth flag
+      navigate('/app'); // ✅ Navigate to main app
+    }, 500);
   };
 
   return (
@@ -60,6 +60,7 @@ const LoginView = ({ onLogin }) => {
 };
 
 export default LoginView;
+
 
 
 

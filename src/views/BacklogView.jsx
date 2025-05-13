@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Modal from '../components/Modal';
-import EmptyState from '../components/EmptyState'; // ✅ import EmptyState
+import EmptyState from '../components/EmptyState';
+import { logActivity } from '../utils/activityLogger'; // ✅ NEW
 
 const LOCAL_STORAGE_KEY = 'pmLite_backlog_tasks';
 
@@ -47,8 +48,11 @@ const BacklogBoard = () => {
     if (!newTask.title.trim()) return;
     if (editId) {
       setTasks(prev => prev.map(task => task.id === editId ? { ...newTask, id: editId } : task));
+      logActivity(`Edited task: ${newTask.title}`);
     } else {
-      setTasks(prev => [...prev, { ...newTask, id: Date.now() }]);
+      const created = { ...newTask, id: Date.now() };
+      setTasks(prev => [...prev, created]);
+      logActivity(`Created task: ${newTask.title}`);
     }
     resetModal();
   };
@@ -60,8 +64,12 @@ const BacklogBoard = () => {
   };
 
   const handleDeleteTask = (id) => {
+    const deleted = tasks.find(task => task.id === id);
     if (window.confirm('Are you sure you want to delete this task?')) {
       setTasks(prev => prev.filter(task => task.id !== id));
+      if (deleted) {
+        logActivity(`Deleted task: ${deleted.title}`);
+      }
     }
   };
 
@@ -72,6 +80,7 @@ const BacklogBoard = () => {
           const currentIndex = columns.indexOf(task.status);
           const newIndex = direction === 'left' ? currentIndex - 1 : currentIndex + 1;
           if (columns[newIndex]) {
+            logActivity(`Moved task '${task.title}' from ${task.status} to ${columns[newIndex]}`);
             return { ...task, status: columns[newIndex] };
           }
         }
@@ -196,5 +205,6 @@ const BacklogBoard = () => {
 };
 
 export default BacklogBoard;
+
 
 

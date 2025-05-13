@@ -1,17 +1,31 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Bot } from 'lucide-react';
 
-const FeedbackWidget = () => {
-  const [feedbackList, setFeedbackList] = useState([
-    { id: 1, message: 'Love the OKR layout — clean and simple!', type: 'positive', submitted: '2024-04-10' },
-    { id: 2, message: 'Would like dark mode support.', type: 'suggestion', submitted: '2024-04-12' },
-  ]);
+const LOCAL_STORAGE_KEY = 'pmLite_feedback';
 
+const FeedbackWidget = () => {
+  const [feedbackList, setFeedbackList] = useState([]);
   const [newFeedback, setNewFeedback] = useState('');
   const [feedbackType, setFeedbackType] = useState('suggestion');
   const [submitting, setSubmitting] = useState(false);
   const [toast, setToast] = useState(null);
   const [showWidget, setShowWidget] = useState(false);
+
+  // Load feedback from localStorage on mount
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(LOCAL_STORAGE_KEY);
+      const parsed = stored ? JSON.parse(stored) : [];
+      setFeedbackList(parsed);
+    } catch {
+      setFeedbackList([]);
+    }
+  }, []);
+
+  // Save feedback to localStorage when it updates
+  useEffect(() => {
+    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(feedbackList));
+  }, [feedbackList]);
 
   const handleSubmit = () => {
     if (!newFeedback.trim()) {
@@ -33,6 +47,8 @@ const FeedbackWidget = () => {
       setFeedbackType('suggestion');
       setSubmitting(false);
       setToast({ type: 'success', message: 'Feedback submitted successfully!' });
+
+      setTimeout(() => setToast(null), 3000);
     }, 600);
   };
 
@@ -117,4 +133,6 @@ const FeedbackWidget = () => {
 };
 
 export default FeedbackWidget;
+
+
 

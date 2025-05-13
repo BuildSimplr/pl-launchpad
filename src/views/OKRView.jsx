@@ -2,48 +2,34 @@ import React, { useState, useEffect } from 'react';
 import { Pencil, Trash2, Flag } from 'lucide-react';
 import EmptyState from '../components/EmptyState';
 import Modal from '../components/Modal';
+import { logActivity } from '../utils/activityLogger';
 
 const LOCAL_STORAGE_KEY = 'pmLite_okrs';
-
-const defaultObjectives = [
-  {
-    id: 1,
-    title: 'Improve Product Adoption',
-    owner: 'Lena',
-    due: 'June 30',
-    keyResults: [
-      { text: 'Increase MAUs by 20%', done: false },
-      { text: 'Launch onboarding flow v2', done: true },
-      { text: 'Reduce churn by 15%', done: false },
-    ],
-  },
-  {
-    id: 2,
-    title: 'Strengthen Engineering Velocity',
-    owner: 'Alex',
-    due: 'June 30',
-    keyResults: [
-      { text: 'Ship 80% of sprint goals', done: false },
-      { text: 'Reduce PR cycle time to under 24h', done: true },
-      { text: 'Improve test coverage by 30%', done: false },
-    ],
-  },
-];
+const TITLE_STORAGE_KEY = 'pmLite_okr_title';
 
 const OKRView = () => {
   const [objectives, setObjectives] = useState(() => {
     try {
       const data = localStorage.getItem(LOCAL_STORAGE_KEY);
-      return data ? JSON.parse(data) : defaultObjectives;
+      return data ? JSON.parse(data) : [];
     } catch {
-      return defaultObjectives;
+      return [];
     }
   });
+
+  const [pageTitle, setPageTitle] = useState('Q2 OKRs');
+  const [editingTitle, setEditingTitle] = useState(false);
+  const [titleInput, setTitleInput] = useState('');
 
   const [showModal, setShowModal] = useState(false);
   const [newTitle, setNewTitle] = useState('');
   const [editId, setEditId] = useState(null);
   const [newKeyResults, setNewKeyResults] = useState(['']);
+
+  useEffect(() => {
+    const savedTitle = localStorage.getItem(TITLE_STORAGE_KEY);
+    if (savedTitle) setPageTitle(savedTitle);
+  }, []);
 
   useEffect(() => {
     localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(objectives));
@@ -59,6 +45,7 @@ const OKRView = () => {
           obj.id === editId ? { ...obj, title: newTitle, keyResults: formattedKRs } : obj
         )
       );
+      logActivity(`Edited objective: ${newTitle}`);
     } else {
       const newObj = {
         id: Date.now(),
@@ -67,7 +54,8 @@ const OKRView = () => {
         due: 'July 30',
         keyResults: formattedKRs,
       };
-      setObjectives([...objectives, newObj]);
+      setObjectives(prev => [...prev, newObj]);
+      logActivity(`Created new objective: ${newTitle}`);
     }
 
     setNewTitle('');
@@ -84,8 +72,10 @@ const OKRView = () => {
   };
 
   const handleDeleteObjective = (id) => {
+    const deleted = objectives.find(obj => obj.id === id);
     if (window.confirm('Are you sure you want to delete this objective?')) {
       setObjectives(prev => prev.filter(obj => obj.id !== id));
+      if (deleted) logActivity(`Deleted objective: ${deleted.title}`);
     }
   };
 
@@ -104,6 +94,7 @@ const OKRView = () => {
           const updatedKRs = obj.keyResults.map((kr, i) =>
             i === index ? { ...kr, done: !kr.done } : kr
           );
+          logActivity(`Marked KR as ${updatedKRs[index].done ? 'done' : 'undone'}: ${updatedKRs[index].text}`);
           return { ...obj, keyResults: updatedKRs };
         }
         return obj;
@@ -111,10 +102,54 @@ const OKRView = () => {
     );
   };
 
+  const calculateProgress = (krs) => {
+    const completed = krs.filter(kr => kr.done).length;
+    const total = krs.length;
+    const percent = total === 0 ? 0 : Math.round((completed / total) * 100);
+    return { completed, total, percent };
+  };
+
+  const handleTitleSave = () => {
+    const clean = titleInput.trim();
+    if (clean) {
+      setPageTitle(clean);
+      localStorage.setItem(TITLE_STORAGE_KEY, clean);
+    }
+    setEditingTitle(false);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold text-gray-900">Q2 OKRs</h1>
+        <div className="flex items-center gap-3">
+          {editingTitle ? (
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                value={titleInput}
+                onChange={(e) => setTitleInput(e.target.value)}
+                className="text-3xl font-bold border border-gray-300 px-3 py-1 rounded-lg"
+              />
+              <button
+                onClick={handleTitleSave}
+                className="text-sm bg-green-700 text-white px-3 py-1 rounded hover:bg-green-800"
+              >
+                Save
+              </button>
+            </div>
+          ) : (
+            <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-2">
+              {pageTitle}
+              <button onClick={() => {
+                setTitleInput(pageTitle);
+                setEditingTitle(true);
+              }}>
+                <Pencil size={16} className="text-gray-400 hover:text-green-700" />
+              </button>
+            </h1>
+          )}
+        </div>
+
         <button
           onClick={() => {
             setEditId(null);
@@ -142,52 +177,64 @@ const OKRView = () => {
           }}
         />
       ) : (
-        objectives.map((obj) => (
-          <div
-            key={obj.id}
-            className="rounded-2xl border border-gray-200 bg-white shadow-lg p-6 hover:shadow-xl transition"
-          >
-            <div className="flex justify-between items-start mb-4">
-              <div className="flex items-center gap-3">
-                <Flag className="text-green-700 w-5 h-5" />
-                <h2 className="text-xl font-semibold text-gray-900">{obj.title}</h2>
-              </div>
-              <div className="flex gap-2 text-gray-500">
-                <button
-                  className="hover:text-green-700"
-                  title="Edit"
-                  onClick={() => handleEditClick(obj.id, obj.title, obj.keyResults)}
-                >
-                  <Pencil size={16} />
-                </button>
-                <button
-                  className="hover:text-red-600"
-                  title="Delete"
-                  onClick={() => handleDeleteObjective(obj.id)}
-                >
-                  <Trash2 size={16} />
-                </button>
-              </div>
-            </div>
+        objectives
+          .sort((a, b) => a.due.localeCompare(b.due))
+          .map((obj) => {
+            const { completed, total, percent } = calculateProgress(obj.keyResults);
+            return (
+              <div key={obj.id} className="rounded-2xl border border-gray-200 bg-white shadow-lg p-6 hover:shadow-xl transition">
+                <div className="flex justify-between items-start mb-4">
+                  <div className="flex items-center gap-3">
+                    <Flag className="text-green-700 w-5 h-5" />
+                    <h2 className="text-xl font-semibold text-gray-900">{obj.title}</h2>
+                  </div>
+                  <div className="flex gap-2 text-gray-500">
+                    <button
+                      className="hover:text-green-700"
+                      title="Edit"
+                      onClick={() => handleEditClick(obj.id, obj.title, obj.keyResults)}
+                    >
+                      <Pencil size={16} />
+                    </button>
+                    <button
+                      className="hover:text-red-600"
+                      title="Delete"
+                      onClick={() => handleDeleteObjective(obj.id)}
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                </div>
 
-            <p className="text-sm text-gray-400 mb-3">
-              Owned by {obj.owner} · Due {obj.due}
-            </p>
+                <p className="text-sm font-medium text-gray-600 mb-2">
+                  <span className="text-green-800">Due: {obj.due}</span> · Owner: {obj.owner}
+                </p>
 
-            <ul className="text-gray-700 space-y-2 pl-2">
-              {obj.keyResults.map((kr, index) => (
-                <li key={index} className="text-sm flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={kr.done}
-                    onChange={() => toggleKeyResult(obj.id, index)}
-                  />
-                  <span className={kr.done ? 'line-through text-gray-400' : ''}>{kr.text}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        ))
+                <p className="text-sm text-gray-700 mb-2">
+                  Progress: {completed} of {total} completed
+                </p>
+                <div className="w-full h-2 rounded bg-gray-200 mb-4 overflow-hidden">
+                  <div
+                    className="h-full bg-green-600 transition-all"
+                    style={{ width: `${percent}%` }}
+                  ></div>
+                </div>
+
+                <ul className="text-gray-700 space-y-2 pl-2">
+                  {obj.keyResults.map((kr, index) => (
+                    <li key={index} className="text-sm flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={kr.done}
+                        onChange={() => toggleKeyResult(obj.id, index)}
+                      />
+                      <span className={kr.done ? 'line-through text-gray-400' : ''}>{kr.text}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            );
+          })
       )}
 
       <Modal isOpen={showModal} onClose={() => {
