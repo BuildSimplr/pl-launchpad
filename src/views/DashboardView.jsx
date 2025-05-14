@@ -8,11 +8,12 @@ import {
 } from 'lucide-react';
 import Tippy from '@tippyjs/react';
 import 'tippy.js/dist/tippy.css';
+import 'tippy.js/themes/light.css'; // 🆕 Light theme
 
 const DashboardView = () => {
-  const [okrCount, setOkrCount] = useState(0);
-  const [taskCount, setTaskCount] = useState(0);
-  const [noteCount, setNoteCount] = useState(0);
+  const [okrCount, setOkrCount] = useState(null);
+  const [taskCount, setTaskCount] = useState(null);
+  const [noteCount, setNoteCount] = useState(null);
   const [recentActivity, setRecentActivity] = useState([]);
 
   useEffect(() => {
@@ -41,21 +42,21 @@ const DashboardView = () => {
   const stats = [
     {
       label: 'Total Objectives',
-      value: okrCount,
+      value: okrCount ?? '–',
       icon: <Flag size={24} className="text-green-700" />,
       tooltip: 'Track your quarterly OKRs and progress',
       link: '/app/okr'
     },
     {
       label: 'Backlog Tasks',
-      value: taskCount,
+      value: taskCount ?? '–',
       icon: <CheckCircle size={24} className="text-blue-600" />,
       tooltip: 'Your Kanban-style task board',
       link: '/app/backlog'
     },
     {
       label: 'Meeting Notes',
-      value: noteCount,
+      value: noteCount ?? '–',
       icon: <StickyNote size={24} className="text-yellow-600" />,
       tooltip: 'Notes organized by date and tag',
       link: '/app/notes'
@@ -68,8 +69,15 @@ const DashboardView = () => {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
         {stats.map((stat, idx) => (
-          <Tippy content={stat.tooltip} key={idx} delay={[200, 0]} arrow={false} placement="top">
-            <Link to={stat.link} className="block">
+          <Tippy
+            key={idx}
+            content={stat.tooltip}
+            theme="light"
+            delay={[200, 0]}
+            placement="top"
+            aria={{ content: 'describedby' }}
+          >
+            <Link to={stat.link} className="block" aria-label={stat.tooltip}>
               <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-5 hover:shadow-md transition">
                 <div className="flex items-center gap-4">
                   <div>{stat.icon}</div>

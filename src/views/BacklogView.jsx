@@ -1,7 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import Modal from '../components/Modal';
 import EmptyState from '../components/EmptyState';
-import { logActivity } from '../utils/activityLogger'; // ✅ NEW
+import { logActivity } from '../utils/activityLogger';
+import {
+  DragDropContext,
+  Droppable,
+  Draggable
+} from 'react-beautiful-dnd';
 
 const LOCAL_STORAGE_KEY = 'pmLite_backlog_tasks';
 
@@ -13,7 +18,7 @@ const defaultTasks = [
 ];
 
 const BacklogBoard = () => {
-  const [tasks, setTasks] = useState(null);
+  const [tasks, setTasks] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [newTask, setNewTask] = useState({ title: '', priority: 'Medium', due: '', status: 'To Do' });
   const [editId, setEditId] = useState(null);
@@ -30,9 +35,7 @@ const BacklogBoard = () => {
   }, []);
 
   useEffect(() => {
-    if (tasks !== null) {
-      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(tasks));
-    }
+    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(tasks));
   }, [tasks]);
 
   const getPriorityColor = (priority) => {
@@ -67,26 +70,8 @@ const BacklogBoard = () => {
     const deleted = tasks.find(task => task.id === id);
     if (window.confirm('Are you sure you want to delete this task?')) {
       setTasks(prev => prev.filter(task => task.id !== id));
-      if (deleted) {
-        logActivity(`Deleted task: ${deleted.title}`);
-      }
+      if (deleted) logActivity(`Deleted task: ${deleted.title}`);
     }
-  };
-
-  const handleMoveTask = (id, direction) => {
-    setTasks(prev =>
-      prev.map(task => {
-        if (task.id === id) {
-          const currentIndex = columns.indexOf(task.status);
-          const newIndex = direction === 'left' ? currentIndex - 1 : currentIndex + 1;
-          if (columns[newIndex]) {
-            logActivity(`Moved task '${task.title}' from ${task.status} to ${columns[newIndex]}`);
-            return { ...task, status: columns[newIndex] };
-          }
-        }
-        return task;
-      })
-    );
   };
 
   const resetModal = () => {
@@ -95,9 +80,35 @@ const BacklogBoard = () => {
     setEditId(null);
   };
 
-  if (!tasks) return <div className="p-6 text-gray-500">Loading backlog...</div>;
+  const onDragEnd = (result) => {
+    const { source, destination } = result;
+    if (!destination) return;
 
-  const isEmpty = tasks.length === 0;
+    const sourceColumn = source.droppableId;
+    const destColumn = destination.droppableId;
+
+    const taskList = [...tasks];
+    const moved = taskList.filter(t => t.status === sourceColumn)[source.index];
+
+    if (sourceColumn === destColumn) {
+      const reordered = taskList
+        .filter(t => t.status === sourceColumn)
+        .filter((_, i) => i !== source.index);
+      reordered.splice(destination.index, 0, moved);
+
+      const updated = taskList
+        .filter(t => t.status !== sourceColumn)
+        .concat(reordered.map(t => ({ ...t, status: sourceColumn })));
+
+      setTasks(updated);
+    } else {
+      const updated = taskList.map(task =>
+        task.id === moved.id ? { ...task, status: destColumn } : task
+      );
+      logActivity(`Moved task '${moved.title}' from ${sourceColumn} to ${destColumn}`);
+      setTasks(updated);
+    }
+  };
 
   return (
     <div className="p-4">
@@ -115,7 +126,7 @@ const BacklogBoard = () => {
         </button>
       </div>
 
-      {isEmpty ? (
+      {tasks.length === 0 ? (
         <EmptyState
           icon="📋"
           title="No Backlog Tasks"
@@ -128,36 +139,52 @@ const BacklogBoard = () => {
           }}
         />
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {columns.map(column => (
-            <div key={column} className="bg-gray-100 p-4 rounded-xl shadow">
-              <h2 className="text-xl font-bold mb-4 text-gray-800">{column}</h2>
-              <div className="space-y-4">
-                {tasks.filter(task => task.status === column).map(task => (
-                  <div key={task.id} className="bg-white p-4 rounded-lg shadow-md">
-                    <div className="flex justify-between items-center mb-2">
-                      <h3 className="text-sm font-semibold text-gray-800">{task.title}</h3>
-                      <span className={`text-xs px-2 py-1 rounded-full text-white ${getPriorityColor(task.priority)}`}>
-                        {task.priority}
-                      </span>
-                    </div>
-                    <p className="text-xs text-gray-500 mb-2">Due: {task.due}</p>
-                    <div className="flex justify-between items-center text-xs text-gray-500">
-                      <div className="space-x-2">
-                        <button onClick={() => handleEditClick(task)} className="hover:text-green-700">Edit</button>
-                        <button onClick={() => handleDeleteTask(task.id)} className="hover:text-red-600">Delete</button>
-                      </div>
-                      <div className="space-x-2">
-                        <button onClick={() => handleMoveTask(task.id, 'left')} className="hover:text-blue-600">←</button>
-                        <button onClick={() => handleMoveTask(task.id, 'right')} className="hover:text-blue-600">→</button>
-                      </div>
-                    </div>
+        <DragDropContext onDragEnd={onDragEnd}>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {columns.map(column => (
+              <Droppable droppableId={column} key={column}>
+                {(provided) => (
+                  <div
+                    {...provided.droppableProps}
+                    ref={provided.innerRef}
+                    className="bg-gray-100 p-4 rounded-xl shadow min-h-[300px]"
+                  >
+                    <h2 className="text-xl font-bold mb-4 text-gray-800">{column}</h2>
+                    {tasks
+                      .filter(task => task.status === column)
+                      .map((task, index) => (
+                        <Draggable draggableId={String(task.id)} index={index} key={task.id}>
+                          {(provided) => (
+                            <div
+                              ref={provided.innerRef}
+                              {...provided.draggableProps}
+                              {...provided.dragHandleProps}
+                              className="bg-white p-4 mb-4 rounded-lg shadow-md"
+                            >
+                              <div className="flex justify-between items-center mb-2">
+                                <h3 className="text-sm font-semibold text-gray-800">{task.title}</h3>
+                                <span className={`text-xs px-2 py-1 rounded-full text-white ${getPriorityColor(task.priority)}`}>
+                                  {task.priority}
+                                </span>
+                              </div>
+                              <p className="text-xs text-gray-500 mb-2">Due: {task.due}</p>
+                              <div className="flex justify-between text-xs text-gray-500">
+                                <div className="space-x-2">
+                                  <button onClick={() => handleEditClick(task)} className="hover:text-green-700">Edit</button>
+                                  <button onClick={() => handleDeleteTask(task.id)} className="hover:text-red-600">Delete</button>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                        </Draggable>
+                      ))}
+                    {provided.placeholder}
                   </div>
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
+                )}
+              </Droppable>
+            ))}
+          </div>
+        </DragDropContext>
       )}
 
       <Modal isOpen={showModal} onClose={resetModal}>
@@ -205,6 +232,8 @@ const BacklogBoard = () => {
 };
 
 export default BacklogBoard;
+
+
 
 
 
